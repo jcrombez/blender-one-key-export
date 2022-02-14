@@ -36,6 +36,14 @@ class OneKeyExport(bpy.types.Operator):
         directory = os.path.dirname(blend_file_path)
         file_name = root.name + '.fbx'
         target_file = os.path.join(directory, file_name)
+        
+        initial_root_location_x = root.location.x
+        initial_root_location_y = root.location.y
+        initial_root_location_z = root.location.z
+        
+        root.location.x = 0
+        root.location.y = 0
+        root.location.z = 0
 
         bpy.ops.export_scene.fbx(
             filepath=target_file,
@@ -78,7 +86,7 @@ class OneKeyExport(bpy.types.Operator):
         #    use_metadata=True
         )
 
-        time.sleep(0.5)
+        time.sleep(0.3)
 
         bpy.ops.object.select_all(action='DESELECT')
 
@@ -87,7 +95,11 @@ class OneKeyExport(bpy.types.Operator):
 
         for o in hiddenObjects:
             o.hide_set(True)
-
+            
+        root.location.x = initial_root_location_x
+        root.location.y = initial_root_location_y
+        root.location.z = initial_root_location_z
+        
         self.report({'INFO'}, "Export done ! (" + file_name + " -> " + directory + ")")
 
         return {'FINISHED'} # Lets Blender know the operator finished successfully.
