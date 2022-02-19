@@ -1,118 +1,230 @@
 bl_info = {
     "name": "One Key Export",
-    "version": (0, 2),
+    "version": (0, 4),
     "blender": (2, 80, 0),
     "category": "Export",
     "author": "Jérémy Crombez",
 }
 
 import bpy
-import os, time
+import os, time, re
 
-class OneKeyExport(bpy.types.Operator):
-    """One Key Export""" # Use this as a tooltip for menu items and buttons.
-    bl_idname = "object.one_key_export2" # Unique identifier for buttons and menu items to reference.
-    bl_label = "One Key Export" # Display name in the interface.
+
+# --- --- --- #
+
+
+class Snowdrop_OneKeyExport(bpy.types.Operator):
+    """One Key Export - Snowdrop""" # Use this as a tooltip for menu items and buttons.
+    bl_idname = "one_key_export.snowdrop" # Unique identifier for buttons and menu items to reference.
+    bl_label = "One Key Export - Snowdrop" # Display name in the interface.
     bl_options = {'REGISTER', 'UNDO'} # Enable undo for the operator.
-
-    def execute(self, context): # execute() is called when running the operator.
-        obs = [o for o in context.selected_objects if o.type == 'MESH']
-
-        if len(context.selected_objects) != 1:
-            raise Exception("invalid selection")
-            
-        root = context.selected_objects[0]
-
-        hiddenObjects = []
-
-        for child in root.children:
-            if child.hide_get():
-                hiddenObjects.append(child)
-                child.hide_set(False)
-
-            child.select_set(True)
-            
-        blend_file_path = bpy.data.filepath
-        directory = os.path.dirname(blend_file_path)
-        file_name = root.name + '.fbx'
-        target_file = os.path.join(directory, file_name)
+    
+    def execute(self, context):      
+        initially_seleted_objects = context.selected_objects
         
-        initial_root_location_x = root.location.x
-        initial_root_location_y = root.location.y
-        initial_root_location_z = root.location.z
+        selected_root_objects = []
+
+        for selected_object in context.selected_objects:
+            selected_object.select_set(False)
+            
+            if selected_object.parent is None:
+                selected_root_objects.append(selected_object)
+                
+        for root in selected_root_objects:
+            root.select_set(True)
+
+            previously_hidden_objects = unhide_hierarchy(root)
+            select_hierarchy(root)
+            
+            # Saving initial location
+            initial_root_location_x = root.location.x
+            initial_root_location_y = root.location.y
+            initial_root_location_z = root.location.z
+            
+            # Resetting location
+            root.location.x = 0
+            root.location.y = 0
+            root.location.z = 0
+            
+            # FBX Export
+            
+            blend_file_full_path = bpy.data.filepath
+            blend_file_path = os.path.dirname(blend_file_full_path)
+            fbx_file_name = root.name + '.fbx'
+            fbx_file_full_path = os.path.join(blend_file_path, fbx_file_name)
+
+            bpy.ops.export_scene.fbx(
+                filepath=fbx_file_full_path,
+                use_selection=True,
+            )
+
+            # Ugly workaround to wait for the export
+            # TODO: wait for the file update date to change instead
+            time.sleep(0.2)
+
+            # Hide back what was hidden
+            for object in previously_hidden_objects:
+                object.hide_set(True)
+                
+            # Move back to origin location
+            root.location.x = initial_root_location_x
+            root.location.y = initial_root_location_y
+            root.location.z = initial_root_location_z
+            
+            bpy.ops.object.select_all(action='DESELECT')
         
-        root.location.x = 0
-        root.location.y = 0
-        root.location.z = 0
+        # Select back what was selected        
+        for object in initially_seleted_objects:
+            object.select_set(True)
+            
+        self.report({'INFO'}, "Export done :-)")
+
+        return {'FINISHED'}
+    
+
+# --- --- --- #
+
+
+class SubstancePainter_OneKeyExport(bpy.types.Operator):
+    """One Key Export - Substance Painter""" # Use this as a tooltip for menu items and buttons.
+    bl_idname = "one_key_export.substance_painter" # Unique identifier for buttons and menu items to reference.
+    bl_label = "One Key Export - Substance Painter" # Display name in the interface.
+    bl_options = {'REGISTER', 'UNDO'} # Enable undo for the operator.
+    
+
+    def execute(self, context):    
+        initially_seleted_objects = context.selected_objects
+
+        previously_hidden_objects = []
+        
+        for selected_object in context.selected_objects:
+            if selected_object.parent is None:
+                previously_hidden_objects += unhide_hierarchy(selected_object)
+                select_hierarchy(selected_object)
+
+        # Duplicate selected objects and then select duplicates
+        bpy.ops.object.duplicate()
+        
+        # Remove all UVs but UV2 on all duplicates
+        for selected_object in context.selected_objects:
+            only_keep_uv2(selected_object)
+                      
+        # FBX Export
+        
+        blend_file_full_path = bpy.data.filepath
+        blend_file_path = os.path.dirname(blend_file_full_path)
+        blend_file_name = os.path.basename(blend_file_full_path)
+        blend_file_name_no_ext = os.path.splitext(os.path.basename(blend_file_name))[0]
+        fbx_file_name = blend_file_name_no_ext + '_SP.fbx'
+        fbx_file_full_path = os.path.join(blend_file_path, fbx_file_name)
 
         bpy.ops.export_scene.fbx(
-            filepath=target_file,
-        #    check_existing=True,
-        #    axis_forward='-Z',
-        #    axis_up='Y',
-        #    filter_glob="*.fbx",
-        #    version='BIN7400',
-        #    ui_tab='MAIN',
+            filepath=fbx_file_full_path,
             use_selection=True,
-        #    global_scale=1.0,
-        #    apply_unit_scale=True,
-        #    bake_space_transform=False,
-        #    object_types={'ARMATURE', 'CAMERA', 'EMPTY', 'LAMP', 'MESH', 'OTHER'},
-        #    use_mesh_modifiers=True,
-        #    mesh_smooth_type='OFF',
-        #    use_mesh_edges=False,
-        #    use_tspace=False,
-        #    use_custom_props=False,
-        #    add_leaf_bones=True,
-        #    primary_bone_axis='Y',
-        #    secondary_bone_axis='X',
-        #    use_armature_deform_only=False,
-        #    armature_nodetype='NULL',
-        #    bake_anim=True,
-        #    bake_anim_use_all_bones=True,
-        #    bake_anim_use_nla_strips=True,
-        #    bake_anim_use_all_actions=True,
-        #    bake_anim_force_startend_keying=True,
-        #    bake_anim_step=1.0,
-        #    bake_anim_simplify_factor=1.0,
-        #    use_anim=True, use_anim_action_all=True,
-        #    use_default_take=True,
-        #    use_anim_optimize=True,
-        #    anim_optimize_precision=6.0,
-        #    path_mode='AUTO',
-        #    embed_textures=False,
-        #    batch_mode='OFF',
-        #    use_batch_own_dir=True,
-        #    use_metadata=True
         )
-
-        time.sleep(0.3)
-
-        bpy.ops.object.select_all(action='DESELECT')
-
-        root.select_set(True)
-        #bpy.context.view_layer.objects.active = child
-
-        for o in hiddenObjects:
-            o.hide_set(True)
-            
-        root.location.x = initial_root_location_x
-        root.location.y = initial_root_location_y
-        root.location.z = initial_root_location_z
         
-        self.report({'INFO'}, "Export done ! (" + file_name + " -> " + directory + ")")
+        # Ugly workaround to wait for the export
+        # TODO: wait for the file update date to change instead
+        time.sleep(0.3)
+        
+        # Delete the selected objects (the duplicates)
+        bpy.ops.object.delete()
 
-        return {'FINISHED'} # Lets Blender know the operator finished successfully.
+        # Hide back what was hidden
+        for object in previously_hidden_objects:
+            object.hide_set(True)
+        
+        # Select back what was selected
+        
+        bpy.ops.object.select_all(action='DESELECT')
+        
+        for object in initially_seleted_objects:
+            object.select_set(True)
+                    
+        self.report({'INFO'}, "Export done :-)")
+
+        return {'FINISHED'}
+
+    
+# --- --- --- #
+
+
+def unhide_hierarchy(object):
+    if is_collision(object):
+        return []
+    
+    previously_hidden_objects = []
+    
+    if object.hide_get():
+        previously_hidden_objects.append(object)
+        object.hide_set(False)
+    
+    for child in object.children:
+        previously_hidden_objects += unhide_hierarchy(child)
+        
+    return previously_hidden_objects
+
+
+def select_hierarchy(object):
+    if is_collision(object):
+        object.select_set(False)
+        return
+
+    object.select_set(True)
+    
+    for child in object.children:
+        select_hierarchy(child)
+
+
+def only_keep_uv2(object):        
+    # Ignore objects (like Empties) who have no UVs
+    if not hasattr(object.data, 'uv_layers'):
+        return
+
+    uvs = object.data.uv_layers
+    
+    # Ignore objects with only 1 uv
+    if len(uvs) == 1:
+        return
+    
+    # Set UV2 as the active one
+    uvs.active_index = 1
+    
+    # Delete not active UVs
+ 
+    not_active_uvs = [uv for uv in uvs if uv != uvs.active]
+    
+    while not_active_uvs:
+        uvs.remove(not_active_uvs.pop())
+
+
+def is_collision(object):
+    return re.search('_COL|_SCOL|_MCOL', object.name) is not None
+
+
+# --- --- --- #
+
 
 def menu_func(self, context):
-    self.layout.operator(OneKeyExport.bl_idname)
+    self.layout.operator(Snowdrop_OneKeyExport.bl_idname)
+    self.layout.operator(SubstancePainter_OneKeyExport.bl_idname)
 
+    
 def register():
-    bpy.utils.register_class(OneKeyExport)
-    bpy.types.VIEW3D_MT_object.append(menu_func)  # Adds the new operator to an existing menu.
+    bpy.utils.register_class(Snowdrop_OneKeyExport)
+    bpy.utils.register_class(SubstancePainter_OneKeyExport)
+    
+    # Avoid adding the operator in the if it's already there.
+    if hasattr(bpy.types.VIEW3D_MT_object.draw, '_draw_funcs'):
+        if menu_func.__name__ not in (f.__name__ for f in bpy.types.VIEW3D_MT_object.draw._draw_funcs):
+            bpy.types.VIEW3D_MT_object.prepend(menu_func)
+    else:
+        bpy.types.VIEW3D_MT_object.prepend(menu_func)
 
 def unregister():
-    bpy.utils.unregister_class(OneKeyExport)
+    bpy.utils.unregister_class(Snowdrop_OneKeyExport)
+    bpy.utils.unregister_class(SubstancePainter_OneKeyExport)
+    bpy.types.VIEW3D_MT_object.remove(menu_func)
 
 
 # This allows you to run the script directly from Blender's Text editor
