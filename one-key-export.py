@@ -15,7 +15,7 @@ import os, time, re
 
 class Snowdrop_OneKeyExport(bpy.types.Operator):
     """One Key Export - Snowdrop""" # Use this as a tooltip for menu items and buttons.
-    bl_idname = "one_key_export.snowdrop" # Unique identifier for buttons and menu items to reference.
+    bl_idname = "object.one_key_export__snowdrop" # Unique identifier for buttons and menu items to reference.
     bl_label = "One Key Export - Snowdrop" # Display name in the interface.
     bl_options = {'REGISTER', 'UNDO'} # Enable undo for the operator.
     
@@ -87,7 +87,7 @@ class Snowdrop_OneKeyExport(bpy.types.Operator):
 
 class SubstancePainter_OneKeyExport(bpy.types.Operator):
     """One Key Export - Substance Painter""" # Use this as a tooltip for menu items and buttons.
-    bl_idname = "one_key_export.substance_painter" # Unique identifier for buttons and menu items to reference.
+    bl_idname = "object.one_key_export__substance_painter" # Unique identifier for buttons and menu items to reference.
     bl_label = "One Key Export - Substance Painter" # Display name in the interface.
     bl_options = {'REGISTER', 'UNDO'} # Enable undo for the operator.
     
@@ -97,10 +97,13 @@ class SubstancePainter_OneKeyExport(bpy.types.Operator):
 
         previously_hidden_objects = []
         
+        selected_root_objects = []
+        
         for selected_object in context.selected_objects:
             if selected_object.parent is None:
+                selected_root_objects.append(selected_object)
                 previously_hidden_objects += unhide_hierarchy(selected_object)
-                select_hierarchy(selected_object)
+                select_hierarchy(selected_object, ignore_collision = True)            
 
         # Duplicate selected objects and then select duplicates
         bpy.ops.object.duplicate()
@@ -108,15 +111,26 @@ class SubstancePainter_OneKeyExport(bpy.types.Operator):
         # Remove all UVs but UV2 on all duplicates
         for selected_object in context.selected_objects:
             only_keep_uv2(selected_object)
-                      
-        # FBX Export
-        
+                          
         blend_file_full_path = bpy.data.filepath
         blend_file_path = os.path.dirname(blend_file_full_path)
-        blend_file_name = os.path.basename(blend_file_full_path)
-        blend_file_name_no_ext = os.path.splitext(os.path.basename(blend_file_name))[0]
-        fbx_file_name = blend_file_name_no_ext + '_SP.fbx'
-        fbx_file_full_path = os.path.join(blend_file_path, fbx_file_name)
+        
+        # Find the best name
+        first_root_name = selected_root_objects[0].name
+        
+        if len(selected_root_objects) == 1:
+            fbx_base_name = first_root_name
+        else:
+            fbx_base_name = first_root_name.replace('_' + first_root_name.split('_')[-1], '')
+            
+        fbx_file_name = fbx_base_name + '.fbx'
+        fbx_file_path = blend_file_path + '/workfiles/';
+        
+        # Create the directory if needed
+        if not os.path.exists(fbx_file_path):
+            os.makedirs(fbx_file_path)
+            
+        fbx_file_full_path = os.path.join(fbx_file_path, fbx_file_name)
 
         bpy.ops.export_scene.fbx(
             filepath=fbx_file_full_path,
@@ -165,15 +179,15 @@ def unhide_hierarchy(object):
     return previously_hidden_objects
 
 
-def select_hierarchy(object):
-    if is_collision(object):
+def select_hierarchy(object, ignore_collision = False):    
+    if ignore_collision and is_collision(object):
         object.select_set(False)
         return
 
     object.select_set(True)
     
     for child in object.children:
-        select_hierarchy(child)
+        select_hierarchy(child, ignore_collision)
 
 
 def only_keep_uv2(object):        
@@ -199,12 +213,12 @@ def only_keep_uv2(object):
 
 
 def is_collision(object):
-    return re.search('_COL|_SCOL|_MCOL', object.name) is not None
+    return re.search('_col|_scol|_mcol', object.name, re.IGNORECASE) is not None
 
 
 # --- --- --- #
-
-
+    
+    
 def menu_func(self, context):
     self.layout.operator(Snowdrop_OneKeyExport.bl_idname)
     self.layout.operator(SubstancePainter_OneKeyExport.bl_idname)
