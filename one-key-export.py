@@ -118,10 +118,12 @@ class SubstancePainter_OneKeyExport(bpy.types.Operator):
         # Find the best name
         first_root_name = selected_root_objects[0].name
         
+        print(len(selected_root_objects))
+        
         if len(selected_root_objects) == 1:
             fbx_base_name = first_root_name
         else:
-            fbx_base_name = first_root_name.replace('_' + first_root_name.split('_')[-1], '')
+            fbx_base_name = '_'.join(first_root_name.split('_')[:-1])
             
         fbx_file_name = fbx_base_name + '.fbx'
         fbx_file_path = blend_file_path + '/workfiles/';
@@ -217,13 +219,13 @@ def is_collision(object):
 
 
 # --- --- --- #
-    
-    
+
+
 def menu_func(self, context):
     self.layout.operator(Snowdrop_OneKeyExport.bl_idname)
     self.layout.operator(SubstancePainter_OneKeyExport.bl_idname)
 
-    
+
 def register():
     bpy.utils.register_class(Snowdrop_OneKeyExport)
     bpy.utils.register_class(SubstancePainter_OneKeyExport)
