@@ -164,7 +164,7 @@ class SubstancePainter_OneKeyExport(bpy.types.Operator):
 
 
 def unhide_hierarchy(object, exclude_collision = False):
-    if exclude_collision && is_collision(object):
+    if exclude_collision and is_collision(object):
         return []
     
     previously_hidden_objects = []
