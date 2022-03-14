@@ -1,6 +1,6 @@
 bl_info = {
     "name": "One Key Export",
-    "version": (0, 4),
+    "version": (0, 4, 2),
     "blender": (2, 80, 0),
     "category": "Export",
     "author": "Jérémy Crombez",
@@ -102,7 +102,7 @@ class SubstancePainter_OneKeyExport(bpy.types.Operator):
         for selected_object in context.selected_objects:
             if selected_object.parent is None:
                 selected_root_objects.append(selected_object)
-                previously_hidden_objects += unhide_hierarchy(selected_object)
+                previously_hidden_objects += unhide_hierarchy(selected_object, True)
                 select_hierarchy(selected_object, ignore_collision = True)            
 
         # Duplicate selected objects and then select duplicates
@@ -117,8 +117,6 @@ class SubstancePainter_OneKeyExport(bpy.types.Operator):
         
         # Find the best name
         first_root_name = selected_root_objects[0].name
-        
-        print(len(selected_root_objects))
         
         if len(selected_root_objects) == 1:
             fbx_base_name = first_root_name
@@ -165,8 +163,8 @@ class SubstancePainter_OneKeyExport(bpy.types.Operator):
 # --- --- --- #
 
 
-def unhide_hierarchy(object):
-    if is_collision(object):
+def unhide_hierarchy(object, exclude_collision = False):
+    if exclude_collision && is_collision(object):
         return []
     
     previously_hidden_objects = []
