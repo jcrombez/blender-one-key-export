@@ -5,7 +5,7 @@ Those operators are designed with a very specific worlflow in mind.
 
 ## How to use
 
-Press "F3" and type "One Key Exporter" then you can either use the "Snowdrop" or "Substaince Painter" export.
+Press "F3" and type "One Key Exporter" then you can either use the "Snowdrop", "Substaince Painter" or "Unreal" export.
 
 ### Snowdrop
 
@@ -24,3 +24,7 @@ Every object with more than one UV will only keep its second UV in the export.
 The .fbx file will be named after the first selected object with no parent, and if there is more than one, any suffix in its name starting with "_" will be stripped from the name.
 
 For example if you selected three root objects, "PROP_42_A", "PROP_42_B" and "PROP_42_C", the exported file will be named "PROP_42".
+
+### Unreal
+
+// TODO: doc
