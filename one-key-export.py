@@ -1,6 +1,6 @@
 bl_info = {
     "name": "One Key Export",
-    "version": (0, 4, 3),
+    "version": (0, 4, 4),
     "blender": (2, 80, 0),
     "category": "Export",
     "author": "Jérémy Crombez",
@@ -197,6 +197,13 @@ class UnrealEngine_OneKeyExport(bpy.types.Operator):
             blend_file_path = os.path.dirname(blend_file_full_path)
             fbx_file_name = root.name + '.fbx'
             fbx_file_full_path = os.path.join(blend_file_path, fbx_file_name)
+
+            # Parcours de tous les objets de la scène
+            # for obj in bpy.context.scene.objects:
+            #     # Vérification si le nom de l'objet commence par "UCX_"
+            #     if obj.name.startswith("UCX_"):
+            #         # Sélection de l'objet
+            #         obj.select_set(True)
 
             bpy.ops.export_scene.fbx(
                 filepath=fbx_file_full_path,
