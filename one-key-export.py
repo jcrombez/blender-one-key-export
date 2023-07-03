@@ -164,7 +164,6 @@ class UnrealEngine_OneKeyExport(bpy.types.Operator):
     bl_label = "One Key Export - Unreal Engine" # Display name in the interface.
     bl_options = {'REGISTER', 'UNDO'} # Enable undo for the operator.
     
-    
     def execute(self, context):
         rename_unreal_collisions(context)
         
@@ -193,20 +192,49 @@ class UnrealEngine_OneKeyExport(bpy.types.Operator):
             blend_file_path = os.path.dirname(blend_file_full_path)
             fbx_file_name = root.name + '.fbx'
             fbx_file_full_path = os.path.join(blend_file_path, fbx_file_name)
-
+            
             bpy.ops.export_scene.fbx(
                 filepath=fbx_file_full_path,
-                use_selection=True,
-                apply_scale_options='FBX_SCALE_ALL',
+                check_existing=True,
+                filter_glob='*.fbx', 
+                use_selection=True, 
+                use_visible=False, 
+                use_active_collection=False,
+                global_scale=1.0,
+                apply_unit_scale=True, # Apply Unit
+                apply_scale_options='FBX_SCALE_NONE',
                 use_space_transform=True,
-                bake_space_transform=True,
-                axis_up='Z',
-                axis_forward='-X',
-                mesh_smooth_type='FACE',
-                use_mesh_modifiers=True,
-                use_armature_deform_only=True,
+                bake_space_transform=True, # Apply Transform
+                object_types={'ARMATURE', 'EMPTY', 'MESH'}, 
+                use_mesh_modifiers=True, # Apply Modifiers
+                use_mesh_modifiers_render=True,
+                mesh_smooth_type='FACE', # Smoothing
+                colors_type='SRGB',
+                prioritize_active_color=False,
+                use_subsurf=False,
+                use_mesh_edges=False,
+                use_tspace=False,
+                use_triangles=False,
+                use_custom_props=False,
                 add_leaf_bones=False,
+                primary_bone_axis='Y',
+                secondary_bone_axis='X',
+                use_armature_deform_only=True, # Only Deform Bones
+                armature_nodetype='NULL',
                 bake_anim=True,
+                bake_anim_use_all_bones=True,
+                bake_anim_use_nla_strips=True,
+                bake_anim_use_all_actions=True,
+                bake_anim_force_startend_keying=True,
+                bake_anim_step=1.0,
+                bake_anim_simplify_factor=1.0,
+                path_mode='AUTO',
+                embed_textures=False,
+                batch_mode='OFF',
+                use_batch_own_dir=True,
+                use_metadata=True,
+                axis_forward='-X', # Forward
+                axis_up='Z' # Up
             )
 
             # Ugly workaround to wait for the export
