@@ -166,15 +166,11 @@ class UnrealEngine_OneKeyExport(bpy.types.Operator):
     
     
     def execute(self, context):
+        rename_unreal_collisions(context)
+        
         initially_seleted_objects = context.selected_objects
         
-        selected_root_objects = []
-        
-        for selected_object in context.selected_objects:
-            selected_object.select_set(False)
-            
-            if selected_object.parent is None:
-                selected_root_objects.append(selected_object)
+        selected_root_objects = get_selected_root_objects(context, unselect=True)
                 
         for root in selected_root_objects:
             root.select_set(True)
@@ -198,16 +194,14 @@ class UnrealEngine_OneKeyExport(bpy.types.Operator):
             fbx_file_name = root.name + '.fbx'
             fbx_file_full_path = os.path.join(blend_file_path, fbx_file_name)
 
-            # Parcours de tous les objets de la scène
-            # for obj in bpy.context.scene.objects:
-            #     # Vérification si le nom de l'objet commence par "UCX_"
-            #     if obj.name.startswith("UCX_"):
-            #         # Sélection de l'objet
-            #         obj.select_set(True)
-
             bpy.ops.export_scene.fbx(
                 filepath=fbx_file_full_path,
                 use_selection=True,
+                apply_scale_options='FBX_SCALE_ALL',
+                use_space_transform=True,
+                bake_space_transform=True,
+                axis_up='Z',
+                axis_forward='-X',
                 mesh_smooth_type='FACE',
                 use_mesh_modifiers=True,
                 use_armature_deform_only=True,
@@ -241,6 +235,30 @@ class UnrealEngine_OneKeyExport(bpy.types.Operator):
 
 # --- --- --- #
 
+
+class UnrealEngine_Collision_OneKeyExport(bpy.types.Operator):
+    """One Key Export - Unreal Engine Collision""" # Use this as a tooltip for menu items and buttons.
+    bl_idname = "object.one_key_export__unreal_engine_collision" # Unique identifier for buttons and menu items to reference.
+    bl_label = "One Key Export - Unreal Engine Collision" # Display name in the interface.
+
+    def execute(self, context):
+        processed = rename_unreal_collisions(context)
+        self.report({'INFO'}, "Collisions processed : " + str(processed))
+        return {'FINISHED'}
+
+# --- --- --- #
+
+def get_selected_root_objects(context, unselect=False):
+    selected_root_objects = []
+    
+    for selected_object in context.selected_objects:
+        if unselect:
+            selected_object.select_set(False)
+        
+        if selected_object.parent is None:
+            selected_root_objects.append(selected_object)
+            
+    return selected_root_objects
 
 def unhide_hierarchy(object, exclude_collision = False):
     if exclude_collision and is_collision(object):
@@ -291,10 +309,41 @@ def only_keep_uv2(object):
         uvs.remove(not_active_uvs.pop())
 
 
-def is_collision(object):
-    return re.search('_col|_scol|_mcol', object.name, re.IGNORECASE) is not None
+def is_collision(obj):
+    return re.search('_col|_scol|_mcol', obj.name, re.IGNORECASE) is not None
 
+def rename_unreal_collisions(context):
+    processed = 0
 
+    for root in get_selected_root_objects(context):        
+        unreal_collisions = get_unreal_collisions(root)
+                        
+        for index, col in enumerate(unreal_collisions):
+            col.name = generate_unreal_collision_name(col, index + 1)
+            col.display_type = 'WIRE'
+            processed += 1
+            
+    return processed
+
+def get_unreal_collisions(parent):
+    unreal_collisions = []
+    
+    for child in parent.children:
+        if is_unreal_collision(child):
+            unreal_collisions.append(child)
+            
+    return unreal_collisions
+    
+def is_unreal_collision(obj):
+    return (re.search('_col|_ucx|ucx', obj.name, re.IGNORECASE) is not None and obj.parent is not None)
+
+def generate_unreal_collision_name(obj, position):
+    if obj.parent is None:
+        return
+    
+    new_collision_name = f'UCX_{obj.parent.name}_{position}'
+    return new_collision_name
+        
 # --- --- --- #
 
 
@@ -302,11 +351,13 @@ def menu_func(self, context):
     self.layout.operator(Snowdrop_OneKeyExport.bl_idname)
     self.layout.operator(SubstancePainter_OneKeyExport.bl_idname)
     self.layout.operator(UnrealEngine_OneKeyExport.bl_idname)
+    self.layout.operator(UnrealEngine_Collision_OneKeyExport.bl_idname)
 
 def register():
     bpy.utils.register_class(Snowdrop_OneKeyExport)
     bpy.utils.register_class(SubstancePainter_OneKeyExport)
     bpy.utils.register_class(UnrealEngine_OneKeyExport)
+    bpy.utils.register_class(UnrealEngine_Collision_OneKeyExport)
     
     # Avoid adding the operator in the if it's already there.
     if hasattr(bpy.types.VIEW3D_MT_object.draw, '_draw_funcs'):
@@ -319,6 +370,7 @@ def unregister():
     bpy.utils.unregister_class(Snowdrop_OneKeyExport)
     bpy.utils.unregister_class(SubstancePainter_OneKeyExport)
     bpy.utils.unregister_class(UnrealEngine_OneKeyExport)
+    bpy.utils.unregister_class(UnrealEngine_Collision_OneKeyExport)
     bpy.types.VIEW3D_MT_object.remove(menu_func)
 
 
