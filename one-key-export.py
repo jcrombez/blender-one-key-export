@@ -1,6 +1,6 @@
 bl_info = {
     "name": "One Key Export",
-    "version": (0, 4, 4),
+    "version": (0, 4, 5),
     "blender": (2, 80, 0),
     "category": "Export",
     "author": "Jérémy Crombez",
@@ -343,8 +343,8 @@ def is_collision(obj):
 def rename_unreal_collisions(context):
     processed = 0
 
-    for root in get_selected_root_objects(context):        
-        unreal_collisions = get_unreal_collisions(root)
+    for root in get_selected_root_objects(context):
+        unreal_collisions = get_unreal_collisions(root, [])
                         
         for index, col in enumerate(unreal_collisions):
             col.name = generate_unreal_collision_name(col, index + 1)
@@ -353,12 +353,12 @@ def rename_unreal_collisions(context):
             
     return processed
 
-def get_unreal_collisions(parent):
-    unreal_collisions = []
-    
+def get_unreal_collisions(parent, unreal_collisions = []):
     for child in parent.children:
         if is_unreal_collision(child):
             unreal_collisions.append(child)
+        else:
+            get_unreal_collisions(child, unreal_collisions)
             
     return unreal_collisions
     
